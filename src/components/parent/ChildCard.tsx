@@ -5,12 +5,13 @@ import { Child } from '../../types';
 interface Props {
   child: Child;
   onPress: () => void;
+  onLongPress?: () => void;
   showAIInsights?: boolean;
 }
 
-export const ChildCard: React.FC<Props> = ({ child, onPress, showAIInsights }) => {
+export const ChildCard: React.FC<Props> = ({ child, onPress, onLongPress, showAIInsights }) => {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={onPress} onLongPress={onLongPress}>
       {child.avatar ? (
         <Image source={{ uri: child.avatar }} style={styles.avatar} />
       ) : (

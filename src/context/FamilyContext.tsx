@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGoogleCalendar } from '../services/GoogleCalendarService';
 import {
   Family,
   Child,
   Task,
   Reward,
   BehaviorEvent,
+  Redemption,
 } from '../types';
 
 interface FamilyContextType {
@@ -13,6 +15,7 @@ interface FamilyContextType {
   loading: boolean;
   error: string | null;
   tasks: Task[];
+  rewards: Reward[];
   // Child Management
   addChild: (
     child: Omit<Child, 'id' | 'createdAt' | 'updatedAt'>
@@ -25,8 +28,9 @@ interface FamilyContextType {
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   // Reward System
-  redeemReward: (rewardId: string, childId: string) => Promise<void>;
+  redeemReward: (rewardId: string, childId: string, pointsCost: number) => Promise<void>;
   addCustomReward: (reward: Omit<Reward, 'id'>) => Promise<void>;
+  addReward: (reward: Omit<Reward, 'id'>) => Promise<void>;
   // Behavior Tracking
   logBehaviorEvent: (
     event: Omit<BehaviorEvent, 'id' | 'timestamp'>
@@ -35,6 +39,13 @@ interface FamilyContextType {
   // Data Sync
   syncWithCloud: () => Promise<void>;
   exportData: () => Promise<string>;
+  refreshData: () => Promise<void>;
+  requestRedemption: (rewardId: string, childId: string) => Promise<void>;
+  approveRedemption: (id: string, parentId: string) => Promise<void>;
+  rejectRedemption: (id: string, parentId: string) => Promise<void>;
+  redemptions: Redemption[];
+  approveTaskCompletion: (taskId: string, parentId: string) => Promise<void>;
+  rejectTaskCompletion: (taskId: string, parentId: string) => Promise<void>;
 }
 
 type FamilyAction =
@@ -58,9 +69,22 @@ type FamilyAction =
       payload: { taskId: string; childId: string; completedAt: Date };
     }
   | { type: 'LOG_BEHAVIOR'; payload: BehaviorEvent }
-  | { type: 'SET_TASKS'; payload: Task[] };
+  | { type: 'SET_TASKS'; payload: Task[] }
+  | {
+      type: 'UPDATE_CHILD_STATS';
+      payload: { childId: string; stats: Partial<Child['stats']> };
+    }
+  | { type: 'SET_REDEMPTIONS'; payload: Redemption[] }
+  | { type: 'ADD_REDEMPTION'; payload: Redemption }
+  | { type: 'UPDATE_REDEMPTION_STATUS'; payload: { id: string; status: 'approved' | 'rejected'; approvedBy: string } }
+  | { type: 'SET_REWARDS'; payload: Reward[] }
+  | { type: 'ADD_REWARD'; payload: Reward }
+  | { type: 'UPDATE_REWARD'; payload: { rewardId: string; updates: Partial<Reward> } }
+  | { type: 'UPDATE_TASK_PARENT_APPROVAL'; payload: { taskId: string; approved: boolean } };
 
 const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
+
+// Calendar event helpers now live in useGoogleCalendar
 
 const familyReducer = (state: any, action: FamilyAction): any => {
   switch (action.type) {
@@ -105,6 +129,18 @@ const familyReducer = (state: any, action: FamilyAction): any => {
         ...state,
         tasks: [...state.tasks, action.payload],
       };
+    case 'UPDATE_CHILD_STATS':
+      return {
+        ...state,
+        family: {
+          ...state.family,
+          children: state.family.children.map((child: Child) =>
+            child.id === action.payload.childId
+              ? { ...child, stats: { ...child.stats, ...action.payload.stats } }
+              : child
+          ),
+        },
+      };
     case 'UPDATE_TASK':
       return {
         ...state,
@@ -118,9 +154,20 @@ const familyReducer = (state: any, action: FamilyAction): any => {
         tasks: state.tasks.filter((t: Task) => t.id !== action.payload),
       };
     case 'COMPLETE_TASK':
-      const { taskId, childId } = action.payload;
+      const { taskId, childId, completedAt } = action.payload;
+      // Find the task to get its points
+      const task = state.tasks.find((t: Task) => t.id === taskId);
+      const taskPoints = task ? task.points : 0;
+      
       return {
         ...state,
+        // Update the task to mark it as completed
+        tasks: state.tasks.map((t: Task) =>
+          t.id === taskId 
+            ? { ...t, isCompleted: true, completedAt, status: 'done' }
+            : t
+        ),
+        // Update the child's stats
         family: {
           ...state.family,
           children: state.family.children.map((child: Child) => {
@@ -131,7 +178,7 @@ const familyReducer = (state: any, action: FamilyAction): any => {
                   ...child.stats,
                   completedTasks: child.stats.completedTasks + 1,
                   currentStreak: child.stats.currentStreak + 1,
-                  totalPoints: child.stats.totalPoints + 10, // TODO
+                  totalPoints: child.stats.totalPoints + taskPoints,
                 },
               };
             }
@@ -143,6 +190,29 @@ const familyReducer = (state: any, action: FamilyAction): any => {
       return { ...state }; // Placeholder
     case 'SET_TASKS':
       return { ...state, tasks: action.payload };
+    case 'SET_REDEMPTIONS':
+      return { ...state, redemptions: action.payload };
+    case 'ADD_REDEMPTION':
+      return { ...state, redemptions: [...state.redemptions, action.payload] };
+    case 'UPDATE_REDEMPTION_STATUS':
+      return {
+        ...state,
+        redemptions: state.redemptions.map(r => r.id === action.payload.id ? { ...r, status: action.payload.status, approvedAt: new Date(), approvedBy: action.payload.approvedBy } : r)
+      };
+    case 'SET_REWARDS':
+      return { ...state, rewards: action.payload };
+    case 'ADD_REWARD':
+      return { ...state, rewards: [...state.rewards, action.payload] };
+    case 'UPDATE_REWARD':
+      return {
+        ...state,
+        rewards: state.rewards.map(r => r.id === action.payload.rewardId ? { ...r, ...action.payload.updates } : r)
+      };
+    case 'UPDATE_TASK_PARENT_APPROVAL':
+      return {
+        ...state,
+        tasks: state.tasks.map(t => t.id === action.payload.taskId ? { ...t, parentApproved: action.payload.approved } : t),
+      };
     default:
       return state;
   }
@@ -154,9 +224,19 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
   const [state, dispatch] = useReducer(familyReducer, {
     family: null,
     tasks: [],
+    redemptions: [],
+    rewards: [],
     loading: true,
     error: null,
   });
+
+  // Google Calendar integration helpers (requires user to be signed in)
+  const {
+    authenticated: calendarAuth,
+    createEvent: calCreateEvent,
+    updateEvent: calUpdateEvent,
+    deleteEvent: calDeleteEvent,
+  } = useGoogleCalendar();
 
   useEffect(() => {
     loadFamilyData();
@@ -165,11 +245,17 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadFamilyData = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
+      console.log('🔍 Loading family data...');
+      
       const stored = await AsyncStorage.getItem('family_data');
+      console.log('📦 Stored family data:', stored ? 'Found' : 'Not found');
+      
       if (stored) {
         const parsedFamily = JSON.parse(stored);
+        console.log('👨‍👩‍👧‍👦 Parsed family:', parsedFamily);
         dispatch({ type: 'SET_FAMILY', payload: parsedFamily });
       } else {
+        console.log('🏠 Creating default family...');
         const defaultFamily: Family = {
           id: 'family_' + Date.now(),
           name: 'My Family',
@@ -189,10 +275,47 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
         await saveFamily(defaultFamily);
         dispatch({ type: 'SET_FAMILY', payload: defaultFamily });
       }
+      
       const storedTasks = await AsyncStorage.getItem('family_tasks');
+      console.log('📋 Stored tasks:', storedTasks ? 'Found' : 'Not found');
       const tasks = storedTasks ? JSON.parse(storedTasks) : [];
       dispatch({ type: 'SET_TASKS', payload: tasks });
+
+      const storedRedemptions = await AsyncStorage.getItem('family_redemptions');
+      dispatch({ type: 'SET_REDEMPTIONS', payload: storedRedemptions ? JSON.parse(storedRedemptions) : [] });
+
+      const storedRewards = await AsyncStorage.getItem('family_rewards');
+      let initialRewards: Reward[] = [];
+      if (storedRewards) {
+        initialRewards = JSON.parse(storedRewards);
+      } else {
+        initialRewards = [
+          {
+            id: 'reward_screen_time',
+            title: '30 min Screen Time',
+            description: 'Extra screen time reward',
+            type: 'privilege',
+            pointsCost: 50,
+            isAvailable: true,
+            category: 'fun',
+          },
+          {
+            id: 'reward_ice_cream',
+            title: 'Ice Cream Treat',
+            description: 'Enjoy a scoop of ice cream',
+            type: 'experience',
+            pointsCost: 75,
+            isAvailable: true,
+            category: 'fun',
+          },
+        ];
+      }
+      dispatch({ type: 'SET_REWARDS', payload: initialRewards });
+      await saveRewards(initialRewards);
+      
+      console.log('✅ Data loading complete');
     } catch (e) {
+      console.error('❌ Error loading data:', e);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
     }
   };
@@ -205,10 +328,103 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
     await AsyncStorage.setItem('family_tasks', JSON.stringify(tasks));
   };
 
+  const saveRedemptions = async (list: Redemption[]) => {
+    await AsyncStorage.setItem('family_redemptions', JSON.stringify(list));
+  };
+
+  const saveRewards = async (rewards: Reward[]) => {
+    await AsyncStorage.setItem('family_rewards', JSON.stringify(rewards));
+  };
+
+  const requestRedemption = async (rewardId: string, childId: string) => {
+    // Ensure child has enough remaining points (total - pending requests)
+    const child = state.family?.children.find(c=>c.id===childId);
+    const reward = state.rewards.find(r=>r.id===rewardId);
+    if(!child || !reward) return;
+    const pendingTotal = state.redemptions.filter(r=>r.childId===childId && r.status==='pending').reduce((sum,r)=>{
+      const rew = state.rewards.find(rr=>rr.id===r.rewardId);
+      return sum + (rew?.pointsCost||0);
+    },0);
+    const remaining = child.stats.totalPoints - pendingTotal;
+    if(remaining < reward.pointsCost){
+      alert('Not enough points for this reward yet!');
+      return;
+    }
+    const newRed: Redemption = {
+      id: 'red_' + Date.now(),
+      rewardId,
+      childId,
+      status: 'pending',
+      requestedAt: new Date(),
+    };
+    dispatch({ type: 'ADD_REDEMPTION', payload: newRed });
+    await saveRedemptions([...state.redemptions, newRed]);
+  };
+
+  const approveRedemption = async (id: string, parentId: string) => {
+    // Find redemption and reward details
+    const redemption = state.redemptions.find(r => r.id === id);
+    if (!redemption) return;
+    const reward = state.rewards.find(r => r.id === redemption.rewardId);
+    if (!reward) return;
+
+    // Update child points in family
+    let updatedFamily = state.family;
+    if (state.family) {
+      updatedFamily = {
+        ...state.family,
+        children: state.family.children.map(c =>
+          c.id === redemption.childId
+            ? {
+                ...c,
+                stats: {
+                  ...c.stats,
+                  totalPoints: Math.max(0, c.stats.totalPoints - reward.pointsCost),
+                },
+              }
+            : c
+        ),
+      } as Family;
+      await saveFamily(updatedFamily);
+      dispatch({ type: 'SET_FAMILY', payload: updatedFamily });
+    }
+
+    // Update in-memory stats for UI
+    dispatch({
+      type: 'UPDATE_CHILD_STATS',
+      payload: {
+        childId: redemption.childId,
+        stats: { totalPoints: (state.family?.children.find(c => c.id === redemption.childId)?.stats.totalPoints || 0) - reward.pointsCost },
+      },
+    });
+
+    // Update redemption status
+    dispatch({ type: 'UPDATE_REDEMPTION_STATUS', payload: { id, status: 'approved', approvedBy: parentId } });
+    await saveRedemptions(state.redemptions.map(r => r.id === id ? { ...r, status: 'approved', approvedAt: new Date(), approvedBy: parentId } : r));
+  };
+
+  const rejectRedemption = async (id: string, parentId: string) => {
+    dispatch({ type: 'UPDATE_REDEMPTION_STATUS', payload: { id, status: 'rejected', approvedBy: parentId } });
+    await saveRedemptions(state.redemptions.map(r => r.id === id ? { ...r, status: 'rejected', approvedAt: new Date(), approvedBy: parentId } : r));
+  };
+
+  const addReward = async (reward: Omit<Reward, 'id'>) => {
+    const newReward: Reward = {
+      ...reward,
+      id: `reward_${Date.now()}`,
+    };
+    dispatch({ type: 'ADD_REWARD', payload: newReward });
+    await saveRewards([...state.rewards, newReward]);
+  };
+
   const addChild = async (
     childData: Omit<Child, 'id' | 'createdAt' | 'updatedAt'>
   ) => {
-    if (!state.family) return;
+    console.log('👶 Adding child:', childData);
+    if (!state.family) {
+      console.error('❌ No family found');
+      return;
+    }
     if (state.family.children.length >= state.family.settings.maxChildren) {
       throw new Error(
         `Maximum ${state.family.settings.maxChildren} children allowed`
@@ -229,9 +445,23 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
       createdAt: new Date(),
       updatedAt: new Date(),
     } as Child;
+    
+    console.log('👶 New child created:', newChild);
+    
+    // Create the updated family data first
+    const updatedFamily = {
+      ...state.family,
+      children: [...state.family.children, newChild],
+    };
+    
+    // Save to storage first
+    console.log('💾 Saving updated family:', updatedFamily);
+    await saveFamily(updatedFamily);
+    
+    // Then update the state
     dispatch({ type: 'ADD_CHILD', payload: newChild });
-    const updated = { ...state.family, children: [...state.family.children, newChild] };
-    await saveFamily(updated);
+    
+    console.log('✅ Child added successfully');
   };
 
   const addTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
@@ -242,25 +472,230 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
       status: 'new',
     } as Task;
     dispatch({ type: 'ADD_TASK', payload: newTask });
+    
+    // Update child's totalTasks count
+    dispatch({
+      type: 'UPDATE_CHILD_STATS',
+      payload: {
+        childId: taskData.childId,
+        stats: { totalTasks: (state.family?.children.find(c => c.id === taskData.childId)?.stats.totalTasks || 0) + 1 }
+      }
+    });
+    
     await saveTasks([...state.tasks, newTask]);
+    if (state.family) await saveFamily(state.family);
+    
+    // Google Calendar: create event for this task if authenticated and dueDate exists
+    if (calendarAuth && newTask.dueDate) {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        const childName = state.family?.children.find(c => c.id === newTask.childId)?.name ?? '';
+        const eventId = await calCreateEvent({
+          summary: newTask.title,
+          description: `Task for ${childName}`,
+          start: { dateTime: newTask.dueDate.toISOString(), timeZone: tz },
+          end: { dateTime: new Date(newTask.dueDate.getTime() + 30 * 60000).toISOString(), timeZone: tz },
+        });
+        if (eventId) {
+          // Persist eventId on task
+          dispatch({ type: 'UPDATE_TASK', payload: { taskId: newTask.id, updates: { calendarEventId: eventId } } });
+          await saveTasks(state.tasks.map(t => t.id === newTask.id ? { ...t, calendarEventId: eventId } : t));
+        }
+      } catch (e) {
+        console.log('📅 Failed to create calendar event', e);
+      }
+    }
   };
 
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    const existingTask = state.tasks.find(t => t.id === taskId);
+    if (!existingTask) return;
+
     dispatch({ type: 'UPDATE_TASK', payload: { taskId, updates } });
     await saveTasks(state.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t));
+
+    if (!calendarAuth) return;
+
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+      // If task already linked to event, update it
+      if (existingTask.calendarEventId) {
+        if (updates.dueDate === undefined && existingTask.dueDate) {
+          // dueDate removed -> delete calendar event
+          await calDeleteEvent(existingTask.calendarEventId);
+          dispatch({ type: 'UPDATE_TASK', payload: { taskId, updates: { calendarEventId: undefined } } });
+        } else {
+          const newDue = updates.dueDate ?? existingTask.dueDate;
+          if (newDue) {
+            await calUpdateEvent(existingTask.calendarEventId, {
+              summary: updates.title ?? existingTask.title,
+              start: { dateTime: newDue.toISOString(), timeZone: tz },
+              end: { dateTime: new Date(newDue.getTime() + 30 * 60000).toISOString(), timeZone: tz },
+            });
+          }
+        }
+      } else if (!existingTask.calendarEventId && (updates.dueDate ?? existingTask.dueDate)) {
+        // No event yet, but we now have a due date -> create one
+        const due = updates.dueDate ?? existingTask.dueDate!;
+        const childName = state.family?.children.find(c => c.id === existingTask.childId)?.name ?? '';
+        const eventId = await calCreateEvent({
+          summary: updates.title ?? existingTask.title,
+          description: `Task for ${childName}`,
+          start: { dateTime: due.toISOString(), timeZone: tz },
+          end: { dateTime: new Date(due.getTime() + 30 * 60000).toISOString(), timeZone: tz },
+        });
+        if (eventId) {
+          dispatch({ type: 'UPDATE_TASK', payload: { taskId, updates: { calendarEventId: eventId } } });
+          await saveTasks(state.tasks.map(t => t.id === taskId ? { ...t, calendarEventId: eventId } : t));
+        }
+      }
+    } catch (e) {
+      console.log('📅 Failed to update calendar event', e);
+    }
   };
 
   const deleteTask = async (taskId: string) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Delete calendar event if linked
+    if (calendarAuth && task.calendarEventId) {
+      try {
+        await calDeleteEvent(task.calendarEventId);
+      } catch (e) {
+        console.log('📅 Failed to delete calendar event', e);
+      }
+    }
+
     dispatch({ type: 'DELETE_TASK', payload: taskId });
     await saveTasks(state.tasks.filter(t => t.id !== taskId));
   };
 
   const completeTask = async (taskId: string, childId: string) => {
+    // Mark as completed but not yet parent approved
     dispatch({
       type: 'COMPLETE_TASK',
       payload: { taskId, childId, completedAt: new Date() },
     });
+
+    const updatedTasks = state.tasks.map(t =>
+      t.id === taskId ? { ...t, isCompleted: true, completedAt: new Date(), status: 'done', parentApproved: false } : t
+    );
+    await saveTasks(updatedTasks);
+  };
+
+  const approveTaskCompletion = async (taskId: string, parentId: string) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task || task.parentApproved) return;
+
+    // Update task approval
+    dispatch({ type: 'UPDATE_TASK_PARENT_APPROVAL', payload: { taskId, approved: true } });
+    const updatedTasks = state.tasks.map(t => t.id === taskId ? { ...t, parentApproved: true } : t);
+    await saveTasks(updatedTasks);
+
+    // Add points to child now
+    if (state.family) {
+      const updatedFamily = {
+        ...state.family,
+        children: state.family.children.map(c => c.id === task.childId ? {
+          ...c,
+          stats: {
+            ...c.stats,
+            completedTasks: c.stats.completedTasks + 1,
+            currentStreak: c.stats.currentStreak + 1,
+            totalPoints: c.stats.totalPoints + task.points,
+          }
+        } : c)
+      } as Family;
+      await saveFamily(updatedFamily);
+      dispatch({ type: 'SET_FAMILY', payload: updatedFamily });
+    }
+  };
+
+  const rejectTaskCompletion = async (taskId: string, parentId: string) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task || task.parentApproved) return;
+    // Simply mark task as not completed? Or reset
+    dispatch({ type: 'UPDATE_TASK_PARENT_APPROVAL', payload: { taskId, approved: false } });
+    const updatedTasks = state.tasks.map(t => t.id === taskId ? { ...t, isCompleted: false, status: 'in_progress', parentApproved: false } : t);
+    await saveTasks(updatedTasks);
+  };
+
+  const redeemReward = async (rewardId: string, childId: string, pointsCost: number) => {
+    if (!state.family) return;
+    
+    const child = state.family.children.find(c => c.id === childId);
+    if (!child || child.stats.totalPoints < pointsCost) {
+      throw new Error('Not enough points to redeem this reward');
+    }
+    
+    // Deduct points from child
+    dispatch({
+      type: 'UPDATE_CHILD_STATS',
+      payload: {
+        childId,
+        stats: { totalPoints: child.stats.totalPoints - pointsCost }
+      }
+    });
+    
     if (state.family) await saveFamily(state.family);
+
+    // If rewardId is provided, schedule experience reward placeholder
+    // This would involve fetching the reward details and potentially scheduling it
+    // For now, we'll just log the redemption.
+    console.log(`Redeemed reward with ID: ${rewardId} for child ${childId} with ${pointsCost} points.`);
+  };
+
+  const logBehaviorEvent = async (
+    event: Omit<BehaviorEvent, 'id' | 'timestamp'>
+  ) => {
+    if (!state.family) return;
+    const newEvent: BehaviorEvent = {
+      ...event,
+      id: 'behavior_' + Date.now(),
+      timestamp: new Date(),
+    } as BehaviorEvent;
+    const updatedFamily = {
+      ...state.family,
+      behaviorEvents: [...state.family.behaviorEvents, newEvent],
+    };
+    await saveFamily(updatedFamily);
+    dispatch({ type: 'LOG_BEHAVIOR', payload: newEvent });
+  };
+
+  const getBehaviorHistory = (childId: string, days?: number) => {
+    if (!state.family) return [];
+    const child = state.family.children.find(c => c.id === childId);
+    if (!child) return [];
+
+    const history = child.behaviorEvents || [];
+    return history.filter(event => {
+      const eventDate = new Date(event.timestamp);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const eventDay = new Date(eventDate);
+      eventDay.setHours(0, 0, 0, 0);
+      return eventDay >= today;
+    }).slice(-(days || 30)); // Return last 'days' or 30 days
+  };
+
+  const syncWithCloud = async () => {
+    console.log('Syncing with cloud...');
+    // Implement cloud sync logic here
+    // This might involve pushing data to a backend and pulling updates
+    // For now, we'll just refresh local data
+    await refreshData();
+  };
+
+  const exportData = async () => {
+    if (!state.family) return JSON.stringify({ error: 'No family data' });
+    return JSON.stringify(state.family);
+  };
+
+  const refreshData = async () => {
+    console.log('🔄 Refreshing data...');
+    await loadFamilyData();
   };
 
   const contextValue: FamilyContextType = {
@@ -268,6 +703,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
     loading: state.loading,
     error: state.error,
     tasks: state.tasks,
+    rewards: state.rewards,
     addChild,
     updateChild: async (childId, updates) => {
       dispatch({ type: 'UPDATE_CHILD', payload: { childId, updates } });
@@ -281,12 +717,20 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
     completeTask,
     updateTask,
     deleteTask,
-    redeemReward: async () => {},
+    redeemReward,
     addCustomReward: async () => {},
-    logBehaviorEvent: async () => {},
-    getBehaviorHistory: () => [],
-    syncWithCloud: async () => {},
-    exportData: async () => JSON.stringify(state.family),
+    logBehaviorEvent,
+    getBehaviorHistory,
+    syncWithCloud,
+    exportData,
+    refreshData,
+    requestRedemption,
+    approveRedemption,
+    rejectRedemption,
+    redemptions: state.redemptions,
+    addReward,
+    approveTaskCompletion,
+    rejectTaskCompletion,
   };
 
   return <FamilyContext.Provider value={contextValue}>{children}</FamilyContext.Provider>;

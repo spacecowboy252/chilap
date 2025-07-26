@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KidsTracker - Behavior & Rewards App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main Menu Screen -->
+    <div id="main-menu" class="screen active">
+        <div class="container">
+            <div class="main-menu-content">
+                <h1 class="app-title">🌟 KidsTracker 🌟</h1>
+                <p class="app-subtitle">Making good behavior fun!</p>
+                
+                <div class="menu-buttons">
+                    <button id="parent-btn" class="btn btn--primary menu-button">
+                        👨‍👩‍👧‍👦 Parent Dashboard
+                    </button>
+                    <button id="child-btn" class="btn btn--secondary menu-button">
+                        🧒 Child View
+                    </button>
+                </div>
+                
+                <div class="family-quick-stats">
+                    <h3>Today's Family Progress</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">17</div>
+                            <div class="stat-label">Tasks Completed</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">140</div>
+                            <div class="stat-label">Points Earned</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">5</div>
+                            <div class="stat-label">Day Streak</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parent Dashboard Screen -->
+    <div id="parent-dashboard" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <button id="back-from-parent" class="btn btn--outline back-btn">← Back</button>
+                <h2>👨‍👩‍👧‍👦 Parent Dashboard</h2>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Children Overview -->
+                <div class="dashboard-section">
+                    <h3>Children Overview</h3>
+                    <div id="children-list" class="children-list">
+                        <!-- Children cards will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Family Stats -->
+                <div class="dashboard-section">
+                    <h3>Family Statistics</h3>
+                    <div class="stats-detailed">
+                        <div class="stat-item">
+                            <span class="stat-icon">📅</span>
+                            <span class="stat-text">Tasks Today: <strong>17/23</strong></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">⭐</span>
+                            <span class="stat-text">Total Points: <strong>140</strong></span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-icon">🔥</span>
+                            <span class="stat-text">Streak: <strong>5 days</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Events -->
+                <div class="dashboard-section">
+                    <h3>📅 Upcoming Events</h3>
+                    <div id="events-list" class="events-list">
+                        <!-- Events will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Rewards Management -->
+                <div class="dashboard-section">
+                    <h3>🎁 Rewards System</h3>
+                    <div id="rewards-grid" class="rewards-grid">
+                        <!-- Rewards will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Child Selection Screen -->
+    <div id="child-selection" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <button id="back-from-child-select" class="btn btn--outline back-btn">← Back</button>
+                <h2>🧒 Choose Your Profile</h2>
+            </div>
+
+            <div class="child-profiles">
+                <div id="child-profiles-grid" class="child-profiles-grid">
+                    <!-- Child profiles will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Child View -->
+    <div id="child-view" class="screen">
+        <div class="container">
+            <div class="screen-header">
+                <button id="back-from-child-view" class="btn btn--outline back-btn">← Back</button>
+                <div id="child-header" class="child-header">
+                    <!-- Child name and info will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="child-content">
+                <!-- Progress Section -->
+                <div class="child-section">
+                    <h3>Your Progress Today</h3>
+                    <div id="child-progress" class="child-progress">
+                        <!-- Progress info will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Tasks Section -->
+                <div class="child-section">
+                    <h3>Today's Tasks</h3>
+                    <div id="child-tasks" class="child-tasks">
+                        <!-- Tasks will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Rewards Section -->
+                <div class="child-section">
+                    <h3>🎁 Available Rewards</h3>
+                    <div id="child-rewards" class="child-rewards">
+                        <!-- Rewards will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🎉 Great Job!</h3>
+            </div>
+            <div class="modal-body">
+                <p id="success-message">You completed a task!</p>
+                <div class="points-earned">
+                    <span class="points-text">+<span id="points-earned">0</span> points!</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-modal" class="btn btn--primary">Awesome!</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

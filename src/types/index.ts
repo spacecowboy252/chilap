@@ -52,6 +52,7 @@ export interface Task {
   createdAt: Date;
   icon?: string; // Emoji or icon name for visual cue
   color?: string; // Optional custom color
+  calendarEventId?: string; // Google Calendar event link
   status: TaskStatus;
 }
 
@@ -67,6 +68,17 @@ export interface Reward {
   calendarEventId?: string; // Google Calendar integration
 }
 
+// Redemption record – a child requests a reward, parent approves/rejects
+export interface Redemption {
+  id: string;
+  rewardId: string;
+  childId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: Date;
+  approvedAt?: Date;
+  approvedBy?: string; // parentId
+}
+
 export type RewardType = 'virtual' | 'experience' | 'privilege' | 'activity';
 export type RewardCategory = 'fun' | 'educational' | 'physical' | 'social' | 'creative';
 export type TaskCategory = 'chores' | 'homework' | 'behavior' | 'selfcare' | 'social';
@@ -80,6 +92,7 @@ export interface Family {
   settings: FamilySettings;
   subscription: SubscriptionTier;
   createdAt: Date;
+  redemptions?: Redemption[];
 }
 
 export interface Parent {

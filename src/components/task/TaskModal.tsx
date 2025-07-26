@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Slider from '@react-native-community/slider';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
 import { difficultyColors } from '../../constants/theme';
 import { Child } from '../../types';
 
@@ -14,6 +16,7 @@ interface Props {
     difficulty: 'easy' | 'medium' | 'hard';
     icon: string;
     childId: string;
+    dueDate?: Date;
   }) => void;
   childrenOptions: Child[];
 }
@@ -24,25 +27,28 @@ export const TaskModal: React.FC<Props> = ({ visible, onClose, onSave, childrenO
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [icon, setIcon] = useState('⭐️');
   const [childId, setChildId] = useState(childrenOptions[0]?.id || '');
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [showPicker, setShowPicker] = useState(false);
 
   const reset = () => {
     setTitle('');
     setPoints(10);
     setDifficulty('easy');
     setIcon('⭐️');
+    setDueDate(undefined);
   };
 
   const handleSave = () => {
     if (!title.trim()) return;
-    onSave({ title, points, difficulty, icon, childId });
+    onSave({ title, points, difficulty, icon, childId, dueDate });
     reset();
     onClose();
   };
 
-  return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.container}>
+  // Use Modal on native, fallback to inline overlay on web to avoid RN Web findDOMNode issues
+  const Content = (
+    <View style={styles.overlay}>
+      <View style={styles.container}>
           <Text style={styles.header}>Create Task</Text>
 
           <Text style={styles.label}>Child</Text>
@@ -88,14 +94,66 @@ export const TaskModal: React.FC<Props> = ({ visible, onClose, onSave, childrenO
             ))}
           </View>
 
+          {/* Due Date */}
+          <Text style={styles.label}>Due Date</Text>
+          {Platform.OS === 'web' ? (
+            <View style={{ width: '100%' }}>
+              {/* @ts-ignore raw HTML for web */}
+              <input
+                type="datetime-local"
+                value={dueDate ? new Date(dueDate.getTime() - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDueDate(val ? new Date(val) : undefined);
+                }}
+                style={{
+                  width: '100%',
+                  padding: 10,
+                  border: '1px solid #dee2e6',
+                  borderRadius: 12,
+                  fontSize: 16,
+                }}
+              />
+            </View>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.input, { justifyContent: 'center' }]}
+                onPress={() => setShowPicker(true)}
+              >
+                <Text>{dueDate ? dueDate.toLocaleString() : 'Select date & time'}</Text>
+              </TouchableOpacity>
+              {showPicker && (
+                <DateTimePicker
+                  value={dueDate || new Date()}
+                  mode="datetime"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, date) => {
+                    if (Platform.OS !== 'ios') setShowPicker(false);
+                    if (date) setDueDate(date);
+                  }}
+                />
+              )}
+            </>
+          )}
+
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
             <Text style={styles.saveText}>Save</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
-        </View>
       </View>
+    </View>
+  );
+
+  if (Platform.OS === 'web') {
+    return visible ? Content : null;
+  }
+
+  return (
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
+      {Content}
     </Modal>
   );
 };

@@ -11,18 +11,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFamily } from '../context/FamilyContext';
 import { useAI } from '../context/AIContext';
+import { useAuth } from '../context/AuthContext';
 import { Child } from '../types';
 import { ChildCard } from '../components/parent/ChildCard';
 import { AddChildButton } from '../components/parent/AddChildButton';
 import { FamilyStats } from '../components/parent/FamilyStats';
+import { DebugInfo } from '../components/DebugInfo';
+import { theme } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   navigation: any;
 }
 
 export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
-  const { family, loading, error } = useFamily();
+  const { family, loading, error, refreshData, redemptions = [], tasks } = useFamily();
   const { aiEnabled, isAnalyzing } = useAI();
+  const { user, signIn, signOut } = useAuth();
   const [selectedView, setSelectedView] = useState<'overview' | 'individual'>('overview');
 
   if (loading) {
@@ -44,6 +49,17 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
   const handleChildPress = (child: Child) => {
     navigation.navigate('ChildDetail', { childId: child.id });
   };
+
+  const handleChildLongPress = (child: Child) => {
+    navigation.navigate('ChildDashboard', { childId: child.id });
+  };
+
+  const handleApprovalsPress = () => {
+    navigation.navigate('Approvals');
+  };
+
+  const pendingTaskApprovals = tasks.filter(t=>t.isCompleted && !t.parentApproved).length;
+  const pendingApprovals = redemptions.filter(r => r.status === 'pending').length + pendingTaskApprovals;
 
   const handleAddChild = () => {
     if (family && family.children.length >= family.settings.maxChildren) {
@@ -76,6 +92,7 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
             key={child.id}
             child={child}
             onPress={() => handleChildPress(child)}
+            onLongPress={() => handleChildLongPress(child)}
             showAIInsights={aiEnabled}
           />
         ))}
@@ -91,10 +108,28 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{family?.name || 'My Family'}</Text>
-          <Text style={styles.subtitle}>
-            {family?.children.length || 0} children • {aiEnabled ? 'AI Enabled' : 'AI Disabled'}
-          </Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>{family?.name || 'My Family'}</Text>
+            {pendingApprovals > 0 && (
+              <TouchableOpacity style={styles.approvalBadge} onPress={handleApprovalsPress}>
+                <View style={styles.approvalInner}>
+                  <Ionicons name="notifications" size={24} color="#fff" />
+                  <View style={styles.badgeCount}>
+                    <Text style={styles.badgeText}>{pendingApprovals}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.signInBtn} onPress={user ? signOut : signIn}>
+              <Text style={styles.signInText}>{user ? 'Sign out' : 'Sign in'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.subtitle}>
+              {family?.children.length || 0} children • {aiEnabled ? 'AI Enabled' : 'AI Disabled'}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.refreshButton} onPress={refreshData}>
+            <Text style={styles.refreshButtonText}>🔄</Text>
+          </TouchableOpacity>
         </View>
 
         {/* View Toggle */}
@@ -137,6 +172,9 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
           </View>
         )}
 
+        {/* Debug Info - Remove this after testing */}
+        <DebugInfo />
+
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity
@@ -172,15 +210,59 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    backgroundColor: theme.colors.primary,
     padding: 20,
+    paddingTop: 60,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
+  refreshButton: {
+    padding: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshButtonText: {
+    fontSize: 18,
+  },
+     title: {
+     fontSize: 28,
+     fontWeight: 'bold',
+     color: '#fff',
+     flex: 1,
+   },
+   approvalBadge: {
+     position: 'relative',
+     padding: 8,
+   },
+   approvalInner: {
+     flexDirection: 'row',
+     alignItems: 'center',
+   },
+   badgeCount: {
+     position: 'absolute',
+     top: 4,
+     right: 4,
+     backgroundColor: theme.colors.danger,
+     borderRadius: 10,
+     minWidth: 20,
+     height: 20,
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
+   badgeText: {
+     color: '#fff',
+     fontSize: 12,
+     fontWeight: 'bold',
+   },
   subtitle: {
     fontSize: 16,
     color: '#666',
@@ -281,4 +363,12 @@ const styles = StyleSheet.create({
     marginTop: 50,
     paddingHorizontal: 20,
   },
+  signInBtn:{
+    paddingHorizontal:12,
+    paddingVertical:6,
+    backgroundColor:'#007bff',
+    borderRadius:6,
+    marginTop:8,
+  },
+  signInText:{color:'#fff',fontWeight:'600'},
 }); 

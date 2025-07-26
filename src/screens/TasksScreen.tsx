@@ -1,12 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useFamily } from '../context/FamilyContext';
 import { Task } from '../types';
 import { TaskListSection } from '../components/task/TaskListSection';
 import { TaskModal } from '../components/task/TaskModal';
 import { Ionicons } from '@expo/vector-icons';
 
-export const TasksScreen: React.FC = () => {
+type Props = {
+  navigation: any;
+};
+
+export const TasksScreen: React.FC<Props> = ({ navigation }) => {
   const { tasks, family, addTask } = useFamily();
   const [showModal, setShowModal] = useState(false);
 
@@ -40,6 +44,7 @@ export const TasksScreen: React.FC = () => {
     difficulty: 'easy' | 'medium' | 'hard';
     icon: string;
     childId: string;
+    dueDate?: Date;
   }) => {
     await addTask({
       childId: data.childId,
@@ -51,13 +56,26 @@ export const TasksScreen: React.FC = () => {
       category: 'chores',
       isCompleted: false,
       parentApproved: true,
+      dueDate: data.dueDate,
       status: 'new',
     } as Omit<Task, 'id' | 'createdAt'>);
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Manage Tasks</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView style={styles.scrollView}>
         <TaskListSection
           title="Overdue"
           tasks={sections.overdue}
@@ -78,12 +96,38 @@ export const TasksScreen: React.FC = () => {
           childrenOptions={family.children}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f8f9fa' 
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  backButton: {
+    padding: 8,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  placeholder: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
   fab: {
     position: 'absolute',
     bottom: 30,

@@ -1,102 +1,104 @@
 import { DefaultTheme } from '@react-navigation/native';
 
-// Age-appropriate color schemes for children 6-12
-export const childThemes = {
-  animals: {
-    primary: '#FF6B6B',
-    secondary: '#4ECDC4',
-    accent: '#FFE66D',
-    background: '#FFF8E1',
-  },
-  space: {
-    primary: '#667EEA',
-    secondary: '#764BA2',
-    accent: '#F093FB',
-    background: '#E6F3FF',
-  },
-  nature: {
-    primary: '#26D0CE',
-    secondary: '#1A2980',
-    accent: '#96E6A1',
-    background: '#F0FFF4',
-  },
-  sports: {
-    primary: '#FF512F',
-    secondary: '#DD2476',
-    accent: '#FFA726',
-    background: '#FFF3E0',
-  },
-};
-
-export const difficultyColors = {
-  easy: '#28a745', // green
-  medium: '#ff9800', // orange
-  hard: '#dc3545', // red
+export const demoColors = {
+  background: '#FCFCF9',
+  surface: '#FFFFFD',
+  text: '#13343B',
+  textSecondary: '#626C71',
+  primary: '#21808D',
+  primaryHover: '#1D7480',
+  primaryActive: '#1A6873',
+  secondary: 'rgba(94, 82, 64, 0.12)',
+  border: 'rgba(94, 82, 64, 0.2)',
+  cardBorder: 'rgba(94, 82, 64, 0.12)',
+  error: '#C0152F',
+  success: '#21808D',
+  warning: '#A84B2F',
+  info: '#626C71',
+  focusRing: 'rgba(33, 128, 141, 0.4)',
 };
 
 export const theme = {
   colors: {
-    primary: '#007bff',
-    secondary: '#6c757d',
-    success: '#28a745',
-    danger: '#dc3545',
-    warning: '#ffc107',
-    info: '#17a2b8',
-    light: '#f8f9fa',
-    dark: '#343a40',
-    background: '#ffffff',
-    surface: '#f8f9fa',
-    text: '#212529',
-    textSecondary: '#6c757d',
-    border: '#dee2e6',
+    ...demoColors,
+    // Legacy aliases for existing code
+    danger: demoColors.error,
+    light: demoColors.background,
+    dark: demoColors.text,
+    textMuted: demoColors.textSecondary,
+    card: demoColors.surface,
   },
-  fonts: {
-    regular: 'System',
-    medium: 'System',
-    bold: 'System',
-    sizes: {
-      xs: 12,
-      sm: 14,
-      md: 16,
-      lg: 18,
-      xl: 20,
-      xxl: 24,
-      xxxl: 28,
-    },
+  typography: {
+    xs: 11,
+    sm: 12,
+    base: 14,
+    md: 14,
+    lg: 16,
+    xl: 18,
+    '2xl': 20,
+    '3xl': 24,
+    '4xl': 30,
+    // Child-friendly sizing
+    h1: 30,
+    h2: 24,
+    body: 16,
+    small: 12,
   },
   spacing: {
     xs: 4,
     sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    '2xl': 24,
+    '3xl': 32,
   },
-  borderRadius: {
-    sm: 4,
-    md: 8,
+  radius: {
+    sm: 6,
+    base: 8,
+    md: 10,
     lg: 12,
-    xl: 16,
-    round: 50,
+    full: 9999,
+  },
+  shadows: {
+    xs: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
+      shadowRadius: 2,
+      elevation: 1,
+    },
+    sm: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    md: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 6,
+      elevation: 3,
+    },
   },
   navigation: {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      primary: '#007bff',
-      background: '#ffffff',
-      card: '#ffffff',
-      text: '#212529',
-      border: '#dee2e6',
-      notification: '#ff3b30',
+      primary: demoColors.primary,
+      background: demoColors.background,
+      card: demoColors.surface,
+      text: demoColors.text,
+      border: demoColors.border,
     },
   },
-  // Child-specific styling (ages 6-12)
-  child: {
-    buttonHeight: 56, // Larger touch targets
-    fontSize: 18, // Larger text for developing reading skills
-    iconSize: 32, // Larger icons
-    spacing: 20, // More generous spacing
-    borderRadius: 12, // Friendly rounded corners
-  },
+};
+
+// Legacy exports for backward compatibility
+export const difficultyColors = {
+  easy: demoColors.success,
+  medium: demoColors.warning,
+  hard: demoColors.error,
 }; 
