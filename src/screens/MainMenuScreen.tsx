@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useFamily } from '../context/FamilyContext';
+import { BackgroundPattern } from '../components/graphics/BackgroundPattern';
+import { FloatingElements } from '../components/graphics/FloatingElements';
 import { theme } from '../constants/theme';
 
 interface Props {
@@ -17,6 +19,12 @@ export const MainMenuScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Background Pattern */}
+      <BackgroundPattern opacity={1.0} />
+      
+      {/* Floating Decorative Elements */}
+      <FloatingElements />
+      
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.appTitle}>🌟 KidsTracker 🌟</Text>

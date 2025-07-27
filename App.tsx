@@ -1,46 +1,100 @@
-// React Native Web compatibility fix for React 18
-if (typeof window !== 'undefined') {
-  const ReactDOM = require('react-dom');
-  if (!ReactDOM.findDOMNode) {
-    // React 19 removed findDOMNode; add a safe no-op polyfill
-    ReactDOM.findDOMNode = () => null;
-  }
-}
-
 import React from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
+import { createStackNavigator } from '@react-navigation/stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AuthProvider } from './src/context/AuthContext';
+// Context Providers
 import { FamilyProvider } from './src/context/FamilyContext';
 import { CelebrationProvider } from './src/context/CelebrationContext';
 import { AIProvider } from './src/context/AIContext';
 
-import { RootNavigator } from './src/navigation/RootNavigator';
-import { theme } from './src/constants/theme';
-import { Platform } from 'react-native';
+// Screens
+import MainPage from './src/screens/MainPage';
+import LoginScreen from './src/screens/LoginScreen';
+import { ParentDashboard } from './src/screens/ParentDashboard';
+import ChildDashboard from './src/screens/ChildDashboard';
+import { AddChildScreen } from './src/screens/AddChildScreen';
+import { TasksScreen } from './src/screens/TasksScreen';
+import { RewardsScreen } from './src/screens/RewardsScreen';
+import { ApprovalsScreen } from './src/screens/ApprovalsScreen';
+// import { CalendarScreen } from './src/screens/CalendarScreen';
 
-// Inject SecureStore polyfill on the web platform before any provider that might access SecureStore.
-if (Platform.OS === 'web') {
-  require('./src/polyfills/secureStore.web');
-}
+// Components
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
+      <ErrorBoundary>
         <FamilyProvider>
           <CelebrationProvider>
             <AIProvider>
-              <NavigationContainer theme={theme.navigation}>
-                <StatusBar style="dark" />
-                <RootNavigator />
+              <NavigationContainer>
+                <Stack.Navigator 
+                  initialRouteName="Main"
+                  screenOptions={{
+                    headerStyle: {
+                      backgroundColor: '#4A90E2',
+                    },
+                    headerTintColor: '#fff',
+                    headerTitleStyle: {
+                      fontWeight: 'bold',
+                    },
+                  }}
+                >
+                  <Stack.Screen 
+                    name="Main" 
+                    component={MainPage} 
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen 
+                    name="Login" 
+                    component={LoginScreen} 
+                    options={{ headerShown: false }}
+                  />
+                  <Stack.Screen 
+                    name="ParentDashboard" 
+                    component={ParentDashboard}
+                    options={{ title: 'Parent Dashboard' }}
+                  />
+                  <Stack.Screen 
+                    name="ChildDashboard" 
+                    component={ChildDashboard}
+                    options={{ title: 'My Tasks' }}
+                  />
+                  <Stack.Screen 
+                    name="AddChild" 
+                    component={AddChildScreen}
+                    options={{ title: 'Add Child' }}
+                  />
+                  <Stack.Screen 
+                    name="Tasks" 
+                    component={TasksScreen}
+                    options={{ title: 'Manage Tasks' }}
+                  />
+                  <Stack.Screen 
+                    name="Rewards" 
+                    component={RewardsScreen}
+                    options={{ title: 'Manage Rewards' }}
+                  />
+                  <Stack.Screen 
+                    name="Approvals" 
+                    component={ApprovalsScreen}
+                    options={{ title: 'Approvals' }}
+                  />
+                  {/* <Stack.Screen 
+                    name="Calendar" 
+                    component={CalendarScreen}
+                    options={{ title: 'Family Calendar' }}
+                  /> */}
+                </Stack.Navigator>
               </NavigationContainer>
             </AIProvider>
           </CelebrationProvider>
         </FamilyProvider>
-      </AuthProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 } 

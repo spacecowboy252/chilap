@@ -3,15 +3,15 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { useFamily } from '../context/FamilyContext';
 import { useAI } from '../context/AIContext';
-import { useAuth } from '../context/AuthContext';
 import { Child } from '../types';
 import { ChildCard } from '../components/parent/ChildCard';
 import { AddChildButton } from '../components/parent/AddChildButton';
@@ -27,7 +27,6 @@ interface Props {
 export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
   const { family, loading, error, refreshData, redemptions = [], tasks } = useFamily();
   const { aiEnabled, isAnalyzing } = useAI();
-  const { user, signIn, signOut } = useAuth();
   const [selectedView, setSelectedView] = useState<'overview' | 'individual'>('overview');
 
   if (loading) {
@@ -105,7 +104,9 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <SafeScrollView 
+        style={styles.scrollView}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -120,9 +121,6 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
                 </View>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.signInBtn} onPress={user ? signOut : signIn}>
-              <Text style={styles.signInText}>{user ? 'Sign out' : 'Sign in'}</Text>
-            </TouchableOpacity>
             <Text style={styles.subtitle}>
               {family?.children.length || 0} children • {aiEnabled ? 'AI Enabled' : 'AI Disabled'}
             </Text>
@@ -160,6 +158,33 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
         {/* Family Stats Overview */}
         {selectedView === 'overview' && family && <FamilyStats family={family} />}
 
+        {/* Management Actions */}
+        <View style={styles.managementSection}>
+          <Text style={styles.sectionTitle}>Family Management</Text>
+          <View style={styles.managementButtons}>
+            <TouchableOpacity
+              style={styles.managementButton}
+              onPress={() => navigation.navigate('Tasks')}
+            >
+              <View style={styles.buttonContent}>
+                <Ionicons name="list" size={24} color="#007bff" />
+                <Text style={styles.managementButtonText}>Manage Tasks</Text>
+                <Text style={styles.buttonSubtext}>Create & assign tasks</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.managementButton}
+              onPress={() => navigation.navigate('Rewards')}
+            >
+              <View style={styles.buttonContent}>
+                <Ionicons name="gift" size={24} color="#28a745" />
+                <Text style={styles.managementButtonText}>Manage Rewards</Text>
+                <Text style={styles.buttonSubtext}>Set up rewards system</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Children Grid */}
         {renderChildrenGrid()}
 
@@ -196,7 +221,7 @@ export const ParentDashboard: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.actionButtonText}>Family Calendar</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </SafeAreaView>
   );
 };
@@ -208,6 +233,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    height: '100%',
   },
   header: {
     backgroundColor: theme.colors.primary,
@@ -363,12 +389,48 @@ const styles = StyleSheet.create({
     marginTop: 50,
     paddingHorizontal: 20,
   },
-  signInBtn:{
-    paddingHorizontal:12,
-    paddingVertical:6,
-    backgroundColor:'#007bff',
-    borderRadius:6,
-    marginTop:8,
+  managementSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
   },
-  signInText:{color:'#fff',fontWeight:'600'},
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  managementButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  managementButton: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  buttonContent: {
+    alignItems: 'center',
+  },
+  managementButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  buttonSubtext: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
 }); 

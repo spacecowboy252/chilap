@@ -1,11 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, SafeAreaView, Platform } from 'react-native';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { useFamily } from '../context/FamilyContext';
 import { Redemption, Reward } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { theme } from '../constants/theme';
 
-export const ApprovalsScreen: React.FC = () => {
+interface Props {
+  navigation: any;
+}
+
+export const ApprovalsScreen: React.FC<Props> = ({ navigation }) => {
   const { redemptions, rewards, family, tasks, approveRedemption, rejectRedemption, approveTaskCompletion, rejectTaskCompletion } = useFamily();
 
   const pendingRedemptions = redemptions.filter(r => r.status === 'pending');
@@ -138,8 +144,17 @@ export const ApprovalsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{flexGrow:1}}>
+      <SafeScrollView contentContainerStyle={{flexGrow:1}}>
         <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerTitle}>Approvals</Text>
           <Text style={styles.pendingCount}>{pendingRedemptions.length + pendingTasks.length} pending</Text>
         </View>
@@ -168,7 +183,7 @@ export const ApprovalsScreen: React.FC = () => {
             ) : null}
           />
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </SafeAreaView>
   );
 };
@@ -182,6 +197,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     padding: 20,
     paddingTop: 40,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  backText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   headerTitle: {
     fontSize: 24,

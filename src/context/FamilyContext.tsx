@@ -27,6 +27,7 @@ interface FamilyContextType {
   completeTask: (taskId: string, childId: string) => Promise<void>;
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
+  reassignTask: (taskId: string, newChildId: string) => Promise<void>;
   // Reward System
   redeemReward: (rewardId: string, childId: string, pointsCost: number) => Promise<void>;
   addCustomReward: (reward: Omit<Reward, 'id'>) => Promise<void>;
@@ -155,36 +156,16 @@ const familyReducer = (state: any, action: FamilyAction): any => {
       };
     case 'COMPLETE_TASK':
       const { taskId, childId, completedAt } = action.payload;
-      // Find the task to get its points
-      const task = state.tasks.find((t: Task) => t.id === taskId);
-      const taskPoints = task ? task.points : 0;
       
       return {
         ...state,
-        // Update the task to mark it as completed
+        // Update the task to mark it as completed but NOT parent approved
         tasks: state.tasks.map((t: Task) =>
           t.id === taskId 
-            ? { ...t, isCompleted: true, completedAt, status: 'done' }
+            ? { ...t, isCompleted: true, completedAt, status: 'done', parentApproved: false }
             : t
         ),
-        // Update the child's stats
-        family: {
-          ...state.family,
-          children: state.family.children.map((child: Child) => {
-            if (child.id === childId) {
-              return {
-                ...child,
-                stats: {
-                  ...child.stats,
-                  completedTasks: child.stats.completedTasks + 1,
-                  currentStreak: child.stats.currentStreak + 1,
-                  totalPoints: child.stats.totalPoints + taskPoints,
-                },
-              };
-            }
-            return child;
-          }),
-        },
+        // DO NOT update child stats here - points will be awarded when parent approves
       };
     case 'LOG_BEHAVIOR':
       return { ...state }; // Placeholder
@@ -295,7 +276,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
             title: '30 min Screen Time',
             description: 'Extra screen time reward',
             type: 'privilege',
-            pointsCost: 50,
+            pointsCost: 25,
             isAvailable: true,
             category: 'fun',
           },
@@ -304,7 +285,43 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
             title: 'Ice Cream Treat',
             description: 'Enjoy a scoop of ice cream',
             type: 'experience',
-            pointsCost: 75,
+            pointsCost: 35,
+            isAvailable: true,
+            category: 'fun',
+          },
+          {
+            id: 'reward_stay_up_late',
+            title: 'Stay Up 30 Min Later',
+            description: 'Extra bedtime extension',
+            type: 'privilege',
+            pointsCost: 20,
+            isAvailable: true,
+            category: 'fun',
+          },
+          {
+            id: 'reward_choose_movie',
+            title: 'Choose Family Movie',
+            description: 'Pick the movie for family night',
+            type: 'experience',
+            pointsCost: 15,
+            isAvailable: true,
+            category: 'fun',
+          },
+          {
+            id: 'reward_special_time',
+            title: 'Special One-on-One Time',
+            description: 'Quality time with parent',
+            type: 'experience',
+            pointsCost: 40,
+            isAvailable: true,
+            category: 'fun',
+          },
+          {
+            id: 'reward_small_toy',
+            title: 'Small Toy or Treat',
+            description: 'A small surprise reward',
+            type: 'experience',
+            pointsCost: 50,
             isAvailable: true,
             category: 'fun',
           },
@@ -388,15 +405,6 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
       await saveFamily(updatedFamily);
       dispatch({ type: 'SET_FAMILY', payload: updatedFamily });
     }
-
-    // Update in-memory stats for UI
-    dispatch({
-      type: 'UPDATE_CHILD_STATS',
-      payload: {
-        childId: redemption.childId,
-        stats: { totalPoints: (state.family?.children.find(c => c.id === redemption.childId)?.stats.totalPoints || 0) - reward.pointsCost },
-      },
-    });
 
     // Update redemption status
     dispatch({ type: 'UPDATE_REDEMPTION_STATUS', payload: { id, status: 'approved', approvedBy: parentId } });
@@ -572,6 +580,51 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
     await saveTasks(state.tasks.filter(t => t.id !== taskId));
   };
 
+  const reassignTask = async (taskId: string, newChildId: string) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const oldChildId = task.childId;
+    
+    // If reassigning to the same child, just return (no changes needed)
+    if (oldChildId === newChildId) {
+      console.log('Task is already assigned to this child');
+      return;
+    }
+    
+    // When reassigning to a different child, reset completion status
+    const taskUpdates = {
+      childId: newChildId,
+      isCompleted: false,
+      completedAt: undefined,
+      parentApproved: false,
+    };
+    
+    // Update task assignment and reset completion
+    dispatch({ type: 'UPDATE_TASK', payload: { taskId, updates: taskUpdates } });
+    
+    // Update calendar event description if it exists
+    if (calendarAuth && task.calendarEventId) {
+      try {
+        const newChildName = state.family?.children.find(c => c.id === newChildId)?.name ?? '';
+        await calUpdateEvent(task.calendarEventId, {
+          description: `Task for ${newChildName}`,
+        });
+      } catch (e) {
+        console.log('📅 Failed to update calendar event description', e);
+      }
+    }
+
+    // Save updated tasks with reset completion status
+    await saveTasks(state.tasks.map(t => 
+      t.id === taskId 
+        ? { ...t, ...taskUpdates } 
+        : t
+    ));
+    
+    console.log(`Task "${task.title}" reassigned from ${state.family?.children.find(c => c.id === oldChildId)?.name} to ${state.family?.children.find(c => c.id === newChildId)?.name} and marked as incomplete`);
+  };
+
   const completeTask = async (taskId: string, childId: string) => {
     // Mark as completed but not yet parent approved
     dispatch({
@@ -580,7 +633,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     const updatedTasks = state.tasks.map(t =>
-      t.id === taskId ? { ...t, isCompleted: true, completedAt: new Date(), status: 'done', parentApproved: false } : t
+      t.id === taskId ? { ...t, isCompleted: true, completedAt: new Date(), status: 'done' } : t
     );
     await saveTasks(updatedTasks);
   };
@@ -717,6 +770,7 @@ export const FamilyProvider: React.FC<{ children: React.ReactNode }> = ({
     completeTask,
     updateTask,
     deleteTask,
+    reassignTask,
     redeemReward,
     addCustomReward: async () => {},
     logBehaviorEvent,

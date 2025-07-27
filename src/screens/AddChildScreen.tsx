@@ -5,13 +5,15 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Alert,
-  SafeAreaView,
+  ScrollView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { useFamily } from '../context/FamilyContext';
 import { Child, ChildPreferences } from '../types';
-import { childThemes } from '../constants/theme';
+import { theme } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
@@ -21,12 +23,20 @@ interface Props {
 const AVATAR_OPTIONS = ['👦', '👧', '🧒', '👶', '🐱', '🐶', '🦄', '🐸', '🦁', '🐯'];
 const AGE_OPTIONS = [6, 7, 8, 9, 10, 11, 12];
 
+// Simple theme options for child preferences
+const THEME_OPTIONS = [
+  { key: 'animals', name: 'Animals', color: '#4CAF50' },
+  { key: 'space', name: 'Space', color: '#2196F3' },
+  { key: 'nature', name: 'Nature', color: '#8BC34A' },
+  { key: 'sports', name: 'Sports', color: '#FF9800' },
+];
+
 export const AddChildScreen: React.FC<Props> = ({ navigation }) => {
   const { addChild } = useFamily();
   const [name, setName] = useState('');
   const [age, setAge] = useState(8);
   const [selectedAvatar, setSelectedAvatar] = useState('👦');
-  const [selectedTheme, setSelectedTheme] = useState<keyof typeof childThemes>('animals');
+  const [selectedTheme, setSelectedTheme] = useState<'animals' | 'space' | 'nature' | 'sports'>('animals');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [loading, setLoading] = useState(false);
 
@@ -44,8 +54,9 @@ export const AddChildScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     try {
       console.log('🎯 AddChildScreen: Creating child preferences...');
+      const selectedThemeOption = THEME_OPTIONS.find(t => t.key === selectedTheme);
       const childPreferences: ChildPreferences = {
-        favoriteColors: [childThemes[selectedTheme].primary],
+        favoriteColors: [selectedThemeOption?.color || theme.colors.primary],
         preferredRewards: ['virtual', 'experience'],
         difficultyLevel: difficulty,
         aiVoiceEnabled: true,
@@ -98,7 +109,9 @@ export const AddChildScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <SafeScrollView 
+        style={styles.scrollView}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Add New Child</Text>
@@ -159,17 +172,17 @@ export const AddChildScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.label}>Pick their favorite theme</Text>
           <View style={styles.themeContainer}>
-            {(Object.keys(childThemes) as Array<keyof typeof childThemes>).map((theme) => (
+            {THEME_OPTIONS.map((themeOption) => (
               <TouchableOpacity
-                key={theme}
+                key={themeOption.key}
                 style={[
                   styles.themeButton,
-                  { backgroundColor: childThemes[theme].primary },
-                  selectedTheme === theme && styles.themeButtonActive,
+                  { backgroundColor: themeOption.color },
+                  selectedTheme === themeOption.key && styles.themeButtonActive,
                 ]}
-                onPress={() => setSelectedTheme(theme)}
+                onPress={() => setSelectedTheme(themeOption.key as 'animals' | 'space' | 'nature' | 'sports')}
               >
-                <Text style={styles.themeText}>{theme.charAt(0).toUpperCase() + theme.slice(1)}</Text>
+                <Text style={styles.themeText}>{themeOption.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -196,17 +209,17 @@ export const AddChildScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>
-            {loading ? 'Adding...' : 'Add Child'}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+        {/* Submit Button */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={[styles.button, (!name || !age || !selectedAvatar || !selectedTheme) && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={!name || !age || !selectedAvatar || !selectedTheme}
+          >
+            <Text style={styles.buttonText}>Add Child</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeScrollView>
     </SafeAreaView>
   );
 };
@@ -218,6 +231,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    height: '100%',
   },
   header: {
     padding: 20,
@@ -367,6 +381,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#6c757d',
   },
   saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  button: {
+    backgroundColor: '#28a745',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 40,
+    elevation: 3,
+  },
+  buttonDisabled: {
+    backgroundColor: '#6c757d',
+  },
+  buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',

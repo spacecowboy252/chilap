@@ -9,16 +9,27 @@ interface Props {
 }
 
 export const TaskPill: React.FC<Props> = ({ task, onPress }) => {
-  const border = task.isCompleted ? theme.colors.success : theme.colors.primary;
   return (
     <TouchableOpacity
-      style={[styles.pill, { borderColor: border, opacity: task.isCompleted ? 0.5 : 1 }]}
+      style={[styles.pill, task.isCompleted && styles.pillCompleted]}
       onPress={onPress}
       disabled={task.isCompleted}
+      activeOpacity={0.7}
     >
-      <Text style={[styles.checkbox, task.isCompleted && styles.checkboxChecked]}>✔</Text>
-      <Text style={[styles.title, task.isCompleted && styles.titleDone]}>{task.title}</Text>
-      <View style={styles.pointsChip}><Text style={styles.pointsText}>+{task.points} pts</Text></View>
+      {/* Checkbox on the left */}
+      <View style={[styles.checkbox, task.isCompleted && styles.checkboxChecked]}>
+        {task.isCompleted && <Text style={styles.checkmark}>✓</Text>}
+      </View>
+      
+      {/* Title in the center */}
+      <Text style={[styles.title, task.isCompleted && styles.titleCompleted]}>
+        {task.title}
+      </Text>
+      
+      {/* Points chip on the right */}
+      <View style={[styles.pointsChip, task.isCompleted && styles.pointsChipCompleted]}>
+        <Text style={styles.pointsText}>+{task.points} pts</Text>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -27,27 +38,63 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderRadius: 12,
+    backgroundColor: '#E6F3FF', // Light teal background
+    borderWidth: 1,
+    borderColor: '#21808D', // Darker teal border
+    borderRadius: 25, // More rounded for pill shape
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pillCompleted: {
+    backgroundColor: '#F0F9FF', // Lighter background when completed
+    borderColor: '#21808D',
   },
   checkbox: {
-    width: 24,
-    textAlign: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#21808D', // Darker teal border
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#21808D', // Darker teal background when checked
+    borderColor: '#21808D',
+  },
+  checkmark: {
+    color: 'white',
     fontSize: 16,
-    color: theme.colors.secondary,
+    fontWeight: 'bold',
   },
-  checkboxChecked: { color: theme.colors.success },
-  title: { flex: 1, fontSize: theme.typography.base, color: theme.colors.text },
-  titleDone: { textDecorationLine: 'line-through', color: theme.colors.textSecondary },
+  title: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#13343B', // Dark text
+  },
+  titleCompleted: {
+    color: '#626C71', // Muted text when completed
+  },
   pointsChip: {
-    backgroundColor: theme.colors.secondary,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#21808D', // Darker teal background
+    borderRadius: 15, // Rounded pill shape
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  pointsText: { fontSize: 12, fontWeight: '600', color: theme.colors.text },
+  pointsChipCompleted: {
+    backgroundColor: '#21808D', // Same color when completed
+  },
+  pointsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'white',
+  },
 }); 

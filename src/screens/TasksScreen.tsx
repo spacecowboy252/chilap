@@ -1,18 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { useFamily } from '../context/FamilyContext';
 import { Task } from '../types';
 import { TaskListSection } from '../components/task/TaskListSection';
 import { TaskModal } from '../components/task/TaskModal';
+import { ReassignTaskModal } from '../components/task/ReassignTaskModal';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../constants/theme';
 
 type Props = {
   navigation: any;
 };
 
 export const TasksScreen: React.FC<Props> = ({ navigation }) => {
-  const { tasks, family, addTask } = useFamily();
+  const { tasks, family, addTask, reassignTask } = useFamily();
   const [showModal, setShowModal] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const today = new Date();
 
@@ -61,6 +66,18 @@ export const TasksScreen: React.FC<Props> = ({ navigation }) => {
     } as Omit<Task, 'id' | 'createdAt'>);
   };
 
+  const handleReassignPress = (task: Task) => {
+    setSelectedTask(task);
+    setShowReassignModal(true);
+  };
+
+  const handleReassign = async (newChildId: string) => {
+    if (selectedTask) {
+      await reassignTask(selectedTask.id, newChildId);
+      setSelectedTask(null);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -72,29 +89,61 @@ export const TasksScreen: React.FC<Props> = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.title}>Manage Tasks</Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity 
+          style={styles.reassignModeButton}
+          onPress={() => {/* Could toggle reassign mode */}}
+        >
+          <Ionicons name="swap-horizontal" size={24} color="#007bff" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <SafeScrollView 
+        style={styles.scrollView}
+      >
         <TaskListSection
           title="Overdue"
           tasks={sections.overdue}
+          children={family?.children || []}
+          onReassignPress={handleReassignPress}
+          showReassignButtons={true}
         />
-        <TaskListSection title="Today" tasks={sections.todayTasks} />
-        <TaskListSection title="Upcoming" tasks={sections.upcoming} />
-      </ScrollView>
+        <TaskListSection 
+          title="Today" 
+          tasks={sections.todayTasks} 
+          children={family?.children || []}
+          onReassignPress={handleReassignPress}
+          showReassignButtons={true}
+        />
+        <TaskListSection 
+          title="Upcoming" 
+          tasks={sections.upcoming} 
+          children={family?.children || []}
+          onReassignPress={handleReassignPress}
+          showReassignButtons={true}
+        />
+      </SafeScrollView>
 
       <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
         <Ionicons name="add" size={36} color="#fff" />
       </TouchableOpacity>
 
       {family && (
-        <TaskModal
-          visible={showModal}
-          onClose={() => setShowModal(false)}
-          onSave={handleSaveTask}
-          childrenOptions={family.children}
-        />
+        <>
+          <TaskModal
+            visible={showModal}
+            onClose={() => setShowModal(false)}
+            onSave={handleSaveTask}
+            childrenOptions={family.children}
+          />
+          
+          <ReassignTaskModal
+            visible={showReassignModal}
+            onClose={() => setShowReassignModal(false)}
+            onReassign={handleReassign}
+            task={selectedTask}
+            children={family.children}
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -122,11 +171,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  placeholder: {
-    width: 40,
+  reassignModeButton: {
+    padding: 8,
   },
   scrollView: {
     flex: 1,
+    height: '100%',
   },
   fab: {
     position: 'absolute',

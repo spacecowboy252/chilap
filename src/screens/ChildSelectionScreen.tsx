@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { useFamily } from '../context/FamilyContext';
 import { theme } from '../constants/theme';
 import { Child } from '../types';
@@ -34,7 +35,7 @@ export const ChildSelectionScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.title}>🧒 Choose Your Profile</Text>
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <SafeScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.profilesGrid}>
           {family?.children.map((child) => (
             <TouchableOpacity
@@ -60,7 +61,7 @@ export const ChildSelectionScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           ))}
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </SafeAreaView>
   );
 };

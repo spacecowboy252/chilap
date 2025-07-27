@@ -7,12 +7,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { Ionicons } from '@expo/vector-icons';
 import { useFamily } from '../context/FamilyContext';
 import { Reward, RewardType, RewardCategory } from '../types';
 import { RewardCard } from '../components/reward/RewardCard';
 import { RewardModal } from '../components/reward/RewardModal';
+import { theme } from '../constants/theme';
 
 const DEFAULT_REWARDS: Omit<Reward, 'id'>[] = [
   {
@@ -164,7 +167,9 @@ export const RewardsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <SafeScrollView 
+        style={styles.scrollView}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -239,7 +244,7 @@ export const RewardsScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           )}
         </View>
-      </ScrollView>
+      </SafeScrollView>
 
       {/* Add Reward FAB */}
       <TouchableOpacity 
@@ -266,6 +271,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    height: '100%',
   },
   header: {
     padding: 20,

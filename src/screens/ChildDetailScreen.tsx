@@ -3,11 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeScrollView } from '../components/SafeScrollView';
 import { useFamily } from '../context/FamilyContext';
 import { theme } from '../constants/theme';
 
@@ -44,7 +44,7 @@ export const ChildDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <SafeScrollView>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -109,7 +109,7 @@ export const ChildDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.actionButtonText}>View Rewards</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </SafeAreaView>
   );
 };
@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    height: '100%',
   },
   header: {
     flexDirection: 'row',

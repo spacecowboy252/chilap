@@ -39,29 +39,47 @@ export const TaskCard: React.FC<Props> = ({ task, child, onComplete }) => {
         style={[
           styles.card,
           { borderLeftColor: diffColor },
-          task.isCompleted && styles.cardDone,
+          task.isCompleted && styles.cardCompleted,
         ]}
         onPress={press}
         disabled={task.isCompleted}
       >
-        <View>
-          <Text style={[styles.title, task.isCompleted && styles.titleDone]}>
+        {/* Task Content - Always Visible */}
+        <View style={styles.taskContent}>
+          <Text style={[
+            styles.title, 
+            task.isCompleted && styles.titleCompleted
+          ]}>
             {task.title}
           </Text>
-          {task.description ? (
-            <Text style={[styles.desc, task.isCompleted && styles.descDone]}>
+          
+          {task.description && (
+            <Text style={[
+              styles.desc, 
+              task.isCompleted && styles.descCompleted
+            ]}>
               {task.description}
             </Text>
-          ) : null}
+          )}
         </View>
 
-        <View style={[styles.pointsBadge, { backgroundColor: diffColor }]}>
+        {/* Points Badge - Always Visible */}
+        <View style={[
+          styles.pointsBadge, 
+          { backgroundColor: diffColor },
+          task.isCompleted && styles.pointsBadgeCompleted
+        ]}>
           <Text style={styles.pointsText}>+{task.points}</Text>
         </View>
 
+        {/* Completion Celebration Overlay - Only when completed */}
         {task.isCompleted && (
-          <View style={styles.overlay}>
-            <Text style={styles.overlayText}>✅</Text>
+          <View style={styles.celebrationOverlay}>
+            <View style={styles.celebrationContent}>
+              <Text style={styles.celebrationIcon}>🎉</Text>
+              <Text style={styles.celebrationText}>COMPLETED!</Text>
+              <Text style={styles.checkmark}>✅</Text>
+            </View>
           </View>
         )}
       </TouchableOpacity>
@@ -73,47 +91,87 @@ const styles = StyleSheet.create({
   card: {
     position: 'relative',
     backgroundColor: theme.colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 10,
-    marginHorizontal: 12,
-    borderLeftWidth: 5,
+    borderRadius: 16,
+    padding: 20,
+    marginVertical: 8,
+    marginHorizontal: 16,
+    borderLeftWidth: 6,
+    minHeight: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cardDone: {
-    opacity: 0.6,
+  cardCompleted: {
+    backgroundColor: '#f0f9ff', // Light celebration background
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+  },
+  taskContent: {
+    flex: 1,
   },
   title: {
-    fontSize: theme.typography.body,
+    fontSize: 18,
     fontWeight: '600',
     color: theme.colors.text,
+    marginBottom: 8,
+    lineHeight: 24,
   },
-  titleDone: {
-    textDecorationLine: 'line-through',
-    color: theme.colors.textMuted,
+  titleCompleted: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
   },
   desc: {
-    fontSize: theme.typography.small,
+    fontSize: 14,
     color: theme.colors.textMuted,
-    marginTop: 4,
+    lineHeight: 20,
   },
-  descDone: {
-    textDecorationLine: 'line-through',
+  descCompleted: {
+    color: theme.colors.primary,
   },
   pointsBadge: {
     position: 'absolute',
-    bottom: 14,
-    right: 14,
+    top: 16,
+    right: 16,
     borderRadius: 20,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
-  pointsText: { color: 'white', fontWeight: 'bold' },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: 12,
-    alignItems: 'center',
+  pointsBadgeCompleted: {
+    backgroundColor: '#22c55e', // Green for completed
+  },
+  pointsText: { 
+    color: 'white', 
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  celebrationOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    backgroundColor: 'rgba(34, 197, 94, 0.9)', // Semi-transparent green
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  overlayText: { fontSize: 38 },
-}); 
+  celebrationContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  celebrationIcon: {
+    fontSize: 20,
+  },
+  celebrationText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  checkmark: {
+    fontSize: 18,
+  },
+});

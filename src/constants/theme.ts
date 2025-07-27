@@ -101,4 +101,6 @@ export const difficultyColors = {
   easy: demoColors.success,
   medium: demoColors.warning,
   hard: demoColors.error,
-}; 
+};
+
+ 
